@@ -4,6 +4,7 @@ from scipy.spatial.distance import cdist
 from scipy.stats import norm
 import numpy as np 
 
+
 class ExpectedImprovement:
     """
         A stationary kernel also known as the squared exponential kernel
@@ -48,11 +49,10 @@ class ExpectedImprovement:
         """
 
         # Ensure we have a 2d shape numpy array for iteration puproses 
-        f_max = np.max(fX)
-        f_min = np.max(fX)
+        f_min = np.min(fX)
         z = (mean-f_min)
 
-        width = np.atleast_2d(width).T
+        # width = np.atleast_2d(width).T
         u = (mean - f_min)*norm.cdf(z) + width*norm.pdf(z)
         x_max, u_max = X_test[np.argmax(u)],np.max(u)
 

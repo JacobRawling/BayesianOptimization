@@ -7,33 +7,7 @@
 import numpy as np
 import kernels 
 import utility_functions as uf
-from copy import copy
-
-class Iteration:
-    def __init__(self, 
-            mean,
-            covariance, 
-            X,
-            f_X,
-            u,
-            next_x,
-            best_u
-                ):
-        """ 
-            A container for an iteration in a bayesian optimizaiton 
-        """
-        self.mean       = copy(mean)
-        self.covariance = copy(covariance)
-        self.width      = copy(np.diag(covariance))
-        self.X          = copy(X)
-        self.f_X        = copy(f_X)
-        self.u          = copy(u)
-
-        # We do not know the way in which u is calculated 
-        # therefore we also need to store the optimal x and u 
-        # values, as found by the utiliy function 
-        self.next_x  = next_x
-        self.best_u  = best_u
+from iteration import Iteration
 
 class BayesianOptimizer:
     """
@@ -65,6 +39,7 @@ class BayesianOptimizer:
 
     def __init__(self,
             kernel = 'RBF',
+            noise = 0.001,
             utility = 'expected_improvement',   
             verbosity = 1       
         ):
@@ -75,8 +50,9 @@ class BayesianOptimizer:
         if callable(kernel):
             assert False, "ERROR: kernel function support not implemented yet!"
         else:
-            self.kernel  = kernels.RBF()
+            self.kernel  = kernels.RBF() 
 
+        self.noise_kernel = kernels.Noise(noise)
         # Similarly load the utility function and ensure that a user define
         # defined function passes the basic behaviourly chaaracteristics
         # of a utlitly function
@@ -120,13 +96,13 @@ class BayesianOptimizer:
             # the mean and covariance at each point in X_test
             mean, covariance = self.postierier( 
                         X_test,
-                        X_initial,
-                        f_X_initial
+                        X,
+                        f_X
                     )
 
             # Evaluate the width at each point in X_test
             # of the postier.
-            width = np.diag(covariance) 
+            width = np.atleast_2d(np.sqrt(np.diag(covariance))).T
 
             # Using the utility function evaluate the next
             # best point to evaluate 
@@ -142,12 +118,15 @@ class BayesianOptimizer:
                         f_X,
                         u,
                         next_x,
-                        best_u
+                        best_u,
+                        X_test
                     ))
 
-            self.log(" Evaluating next x: " + str(next_x))
-            f_X = vstack((f_X, f(next_x)))
-            X.vstack((x, f_X[-1,:]) )
+            X   = np.vstack((X, next_x) )
+
+            self.log( "Moving to position: "+ str(next_x))
+            f_X = np.vstack((f_X, f(next_x)))
+            self.log( "Next position has f: "+ str(f_X[-1]))
 
         self.log(" Complete." )
         return iterations 
@@ -158,12 +137,10 @@ class BayesianOptimizer:
         """ 
 
         """
-        self.log ("convergence_criteria: is integer: " + str(isinstance(convergence_criteria,int)))
         if isinstance(convergence_criteria,int):
             return param >= convergence_criteria
         else:
             return True
-
 
 
     def postierier(self,x,X,f_X):
@@ -179,12 +156,12 @@ class BayesianOptimizer:
         f_X: measured Y associated with each point x    
         """
 
-        k_xX = self.kernel(x,X)
-        k_XX = self.kernel(X,X)
+        k_xX = self.kernel(x,X)+self.noise_kernel(x,X)
+        k_XX = self.kernel(X,X)+self.noise_kernel(X)
         k_XX_inv = np.linalg.inv(k_XX)
-        k_xx = self.kernel(x,x)
-        k_Xx = self.kernel(X,x)
-        
+        k_xx = self.kernel(x,x)+self.noise_kernel(x)
+        k_Xx = self.kernel(X,x)+self.noise_kernel(X,x)
+
         mean = np.matmul(k_XX_inv,f_X )
         mean = np.matmul( k_xX, mean)
 

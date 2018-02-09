@@ -62,4 +62,25 @@ class RBF:
 
         return K 
 
+class Noise:
+    """
+
+    """
+
+    def __init__(self, noise_size):
+        self.noise_size = noise_size 
+
+    def __validated_noise_size(self,X,noise_size):
+        """
+            Ensures that the width is a valid type, run test. 
+        """
+        return noise_size
+
+    def __call__(self,X,Y = None): 
+        if Y is None:
+            K = self.noise_size * np.eye(X.shape[0])
+            return K
+        else:
+            return np.zeros((X.shape[0], Y.shape[0]))
+
 
